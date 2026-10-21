@@ -1,0 +1,7 @@
+KOD PERFORMANS RAPORU
+Veri sayisi: 5000
+Eski kod suresi: 0.509646 saniye
+Optimize kod suresi: 0.000673 saniye
+Hizlanma: 756.9 kat
+Dogruluk testi: BASARILI
+Kisa yorum: Eski kod her eleman cifti icin ic ice dongu ve liste icinde arama yaptigi icin O(n^2) ve daha fazla maliyetlidir. Optimize kod Counter ve set kullanarak yaklasik O(n) surede calisir. Sonuclar ve sirasi ayni kaldi, bu yuzden kod hem dogru hem cok daha hizlidir.
