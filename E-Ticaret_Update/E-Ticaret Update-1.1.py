@@ -1,0 +1,238 @@
+import json
+import os
+import google.generativeai as genai
+
+# Geminiyle API Yapılandırması
+genai.configure(api_key="API ANAHTARI BURAYA GİRİLECEK")
+model = genai.GenerativeModel('gemini-3.5-flash-lite', generation_config={"response_mime_type": "application/json"})
+
+DOSYA_ADI = "urunler.json"
+
+def dosya_yukle():
+    """JSON dosyasından verileri okur, yoksa veya bozuksa boş liste döner."""
+    if not os.path.exists(DOSYA_ADI):
+        return []
+    try:
+        with open(DOSYA_ADI, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return []
+
+def dosya_kaydet(veriler):
+    """Verileri JSON dosyasına kaydeder."""
+    try:
+        with open(DOSYA_ADI, "w", encoding="utf-8") as f:
+            json.dump(veriler, f, ensure_ascii=False, indent=4)
+    except IOError:
+        print("[HATA] Dosya kaydedilirken bir sorun oluştu.")
+
+def api_ile_analiz_et(aciklama):
+    """Gemini API'ye istek atar ve JSON yanıtını sözlük olarak döndürür."""
+    prompt = f"""
+    Aşağıdaki ürün açıklamasına göre bir e-ticaret ürün bilgisi oluştur: '{aciklama}'
+    Lütfen SADECE aşağıdaki formatta geçerli ve eksiksiz bir JSON döndür:
+    {{
+        "urun_adi": "Ürün Adı",
+        "kategori": "Kategori Adı",
+        "seo_etiketleri": "etiket1, etiket2, etiket3",
+        "satis_aciklamasi": "İki cümlelik satış açıklaması."
+    }}
+    """
+    try:
+        response = model.generate_content(prompt)
+        veri = json.loads(response.text)
+        
+        gerekli_alanlar = ["urun_adi", "kategori", "seo_etiketleri", "satis_aciklamasi"]
+        if all(alan in veri for alan in gerekli_alanlar):
+            return veri
+        else:
+            print("[HATA] API'den eksik veri döndü.")
+            return None
+    except Exception as e:
+        print(f"[HATA] API Hatası veya geçersiz JSON formatı: {e}")
+        return None
+
+def dogal_dilden_sql_uret():
+    """Ekran görüntüsündeki şema ve talebe göre Gemini kullanarak SQL sorgusu üretir."""
+    print("\n--- YAPAY ZEKA DESTEKLİ DOĞAL DİLDEN SQL ÜRETİCİ ---")
+    
+    sema = """
+    1. Musteriler Tablosu: musteri_id, ad_soyad, eposta, sehir
+    2. Siparisler Tablosu: siparis_id, musteri_id, tutar, siparis_tarihi
+    """
+    
+    print("\n[AŞAMA 1] VERİTABANI ŞEMASI VE KULLANICI TALEBİ ALINDI...")
+    print(sema)
+    
+    talep = "Son 30 günde 5000 TL üzeri alışveriş yapan İstanbul'daki müşterilerin adını, e-posta adresini ve toplam harcama tutarını getir."
+    print(f"Talep: {talep}\n")
+    
+    print("[AŞAMA 2] SQL ÇEVİRİSİ İÇİN GEMİNİ'YE BAĞLANILIYOR...")
+    
+    prompt = f"""
+    Aşağıdaki veritabanı şemasına ve kullanıcı talebine uygun SQL sorgusunu yaz.
+    
+    Şema:
+    {sema}
+    
+    Talep:
+    {talep}
+    
+    Lütfen sadece SQL sorgusunu döndür.
+    """
+    
+    try:
+        print("Gemini isteği gönderiliyor...")
+        # Bu aşamada normal metin çıktısı alabilmek için farklı bir konfigürasyon veya doğrudan model çağrısı kullanılabilir
+        text_model = genai.GenerativeModel('gemini-3.5-flash-lite')
+        response = text_model.generate_content(prompt)
+        print("Gemini yanıtı alındı:\n")
+        print("--------------------------------------------------")
+        print("ÜRETİLEN SQL SORGUSU:")
+        print("--------------------------------------------------")
+        print(response.text.strip())
+        print("--------------------------------------------------")
+    except Exception as e:
+        print(f"[HATA] SQL üretilirken bir sorun oluştu: {e}")
+
+def urun_ekle(urunler):
+    """Kullanıcıdan bilgileri alır, API'yi çağırır ve yeni ürünü kaydeder."""
+    aciklama = input("Ürün açıklaması: ").strip()
+    if not aciklama:
+        print("[HATA] Açıklama boş bırakılamaz.")
+        return
+
+    try:
+        fiyat = float(input("Ürün fiyatı: "))
+        stok = int(input("Stok miktarı: "))
+        if fiyat < 0 or stok < 0:
+            print("[HATA] Fiyat ve stok negatif olamaz!")
+            return
+    except ValueError:
+        print("[HATA] Lütfen geçerli bir sayısal değer girin!")
+        return
+
+    print("[API] Ürün bilgileri oluşturuluyor...")
+    api_verisi = api_ile_analiz_et(aciklama)
+    
+    if not api_verisi:
+        print("[HATA] Ürün kaydedilemedi.")
+        return
+
+    yeni_id = 1
+    if urunler:
+        mevcut_idler = [int(u["urun_kodu"].split("-")[1]) for u in urunler]
+        yeni_id = max(mevcut_idler) + 1
+        
+    urun_kodu = f"URN-{yeni_id:04d}"
+
+    yeni_urun = {
+        "urun_kodu": urun_kodu,
+        "urun_adi": api_verisi["urun_adi"],
+        "kategori": api_verisi["kategori"],
+        "seo_etiketleri": api_verisi["seo_etiketleri"],
+        "satis_aciklamasi": api_verisi["satis_aciklamasi"],
+        "fiyat": fiyat,
+        "stok": stok
+    }
+    
+    urunler.append(yeni_urun)
+    dosya_kaydet(urunler)
+    
+    print("\n[BAŞARILI] Ürün kaydedildi.")
+    print(f"Ürün Kodu: {urun_kodu}")
+    print(f"Ürün Adı: {yeni_urun['urun_adi']}")
+    print(f"Kategori: {yeni_urun['kategori']}")
+    print(f"Fiyat: {fiyat} TL")
+    print(f"Stok: {stok}")
+    print(f"SEO: {yeni_urun['seo_etiketleri']}")
+    
+    stok_uyarisi(stok)
+
+def urun_listele(urunler):
+    """Tüm ürünleri listeler."""
+    if not urunler:
+        print("[BİLGİ] Henüz kayıtlı ürün bulunmamaktadır.")
+        return
+    
+    for u in urunler:
+        print(f"[{u['urun_kodu']}] {u['urun_adi']} - {u['kategori']} | {u['fiyat']} TL | Stok: {u['stok']}")
+        stok_uyarisi(u['stok'])
+
+def urun_ara(urunler):
+    """Kısmi ve büyük/küçük harf duyarsız arama yapar."""
+    if not urunler:
+        print("[BİLGİ] Kayıtlı ürün yok.")
+        return
+
+    kelime = input("Aranacak ürün (Ad veya Kod): ").strip().lower()
+    sonuclar = [u for u in urunler if kelime in u['urun_adi'].lower() or kelime in u['urun_kodu'].lower()]
+    
+    print(f"\n[SONUÇ] {len(sonuclar)} ürün bulundu:")
+    for u in sonuclar:
+        print(f"- {u['urun_kodu']}: {u['urun_adi']} (Stok: {u['stok']})")
+
+def stok_guncelle(urunler):
+    """Ürün kodu ile arayarak stok değerini günceller."""
+    kod = input("Ürün kodu (Örn: URN-0001): ").strip().upper()
+    urun = next((u for u in urunler if u['urun_kodu'] == kod), None)
+    
+    if not urun:
+        print("[HATA] Ürün bulunamadı.")
+        return
+        
+    try:
+        yeni_stok = int(input("Yeni stok miktarı: "))
+        if yeni_stok < 0:
+            print("[HATA] Stok negatif olamaz!")
+            return
+            
+        eski_stok = urun['stok']
+        urun['stok'] = yeni_stok
+        dosya_kaydet(urunler)
+        print(f"[BAŞARILI] Stok {eski_stok} -> {yeni_stok} olarak güncellendi.")
+        stok_uyarisi(yeni_stok)
+    except ValueError:
+        print("[HATA] Lütfen geçerli bir tam sayı girin!")
+
+def stok_uyarisi(stok):
+    """Stok durumunu değerlendirir ve gerekirse uyarı mesajı yazdırır."""
+    if stok == 0:
+        print(">> [UYARI] STOKTA YOK!")
+    elif 1 <= stok <= 4:
+        print(f">> [UYARI] KRİTİK STOK! Yalnızca {stok} adet kaldı.")
+
+def ana_menu():
+    """Uygulamanın ana döngüsünü çalıştırır."""
+    urunler = dosya_yukle()
+    
+    while True:
+        print("\n=== E-TİCARET YÖNETİM PANELİ ===")
+        print("1 - Yeni Ürün Ekle")
+        print("2 - Ürünleri Listele")
+        print("3 - Ürün Ara")
+        print("4 - Stok Güncelle")
+        print("5 - Doğal Dilden SQL Üret (Yapay Zeka)")
+        print("6 - Çıkış")
+        
+        secim = input("Seçiminiz: ").strip()
+        
+        if secim == '1':
+            urun_ekle(urunler)
+        elif secim == '2':
+            urun_listele(urunler)
+        elif secim == '3':
+            urun_ara(urunler)
+        elif secim == '4':
+            stok_guncelle(urunler)
+        elif secim == '5':
+            dogal_dilden_sql_uret()
+        elif secim == '6':
+            print("Programdan çıkılıyor...")
+            break
+        else:
+            print("[HATA] Geçersiz seçim, lütfen 1-6 arası bir sayı girin.")
+
+if __name__ == "__main__":
+    ana_menu()
+    
