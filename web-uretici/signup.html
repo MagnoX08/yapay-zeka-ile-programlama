@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Üye Ol - Neon Auth</title>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(17, 24, 39, 0.7);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --primary-glow: rgba(139, 92, 246, 0.5);
+            --secondary-glow: rgba(59, 130, 246, 0.5);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent-purple: #8b5cf6;
+            --accent-blue: #3b82f6;
+            --error-color: #ef4444;
+            --success-color: #10b981;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.15) 0%, transparent 40%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 420px;
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5),
+                        0 0 30px rgba(139, 92, 246, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue));
+        }
+
+        .brand-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .brand-header h1 {
+            font-size: 1.85rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #fff 0%, var(--text-muted) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-header p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+            position: relative;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .form-control {
+            width: 100%;
+            background: rgba(3, 7, 18, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.85rem 1rem;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .form-control:focus {
+            border-color: var(--accent-purple);
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
+            background: rgba(3, 7, 18, 0.8);
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.85rem;
+            padding: 4px;
+            transition: color 0.2s;
+        }
+
+        .toggle-password:hover {
+            color: var(--text-main);
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 0.9rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+            position: relative;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 0 25px var(--primary-glow), 0 0 40px var(--secondary-glow);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .auth-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .auth-footer a {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .auth-footer a:hover {
+            color: #60a5fa;
+            text-decoration: underline;
+        }
+
+        .error-message {
+            color: var(--error-color);
+            font-size: 0.75rem;
+            margin-top: 0.35rem;
+            display: none;
+        }
+
+        .form-group.error .form-control {
+            border-color: var(--error-color);
+        }
+
+        .form-group.error .error-message {
+            display: block;
+        }
+
+        .alert-box {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 1.25rem;
+            display: none;
+        }
+
+        .alert-box.success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--success-color);
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="auth-container">
+        <div class="brand-header">
+            <h1>Hesap Oluştur</h1>
+            <p>Yeni nesil deneyime hemen katılın</p>
+        </div>
+
+        <div id="successAlert" class="alert-box"></div>
+
+        <form id="signupForm" novalidate>
+            <div class="form-group" id="nameGroup">
+                <label for="fullName">Ad Soyad</label>
+                <div class="input-wrapper">
+                    <input type="text" id="fullName" class="form-control" placeholder="Ad Soyad">
+                </div>
+                <div class="error-message">Ad soyad alanı boş bırakılamaz.</div>
+            </div>
+
+            <div class="form-group" id="emailGroup">
+                <label for="email">E-posta Adresi</label>
+                <div class="input-wrapper">
+                    <input type="email" id="email" class="form-control" placeholder="ornek@domain.com">
+                </div>
+                <div class="error-message">Geçerli bir e-posta adresi giriniz.</div>
+            </div>
+
+            <div class="form-group" id="passwordGroup">
+                <label for="password">Şifre</label>
+                <div class="input-wrapper">
+                    <input type="password" id="password" class="form-control" placeholder="••••••••">
+                    <button type="button" class="toggle-password" data-target="password">Göster</button>
+                </div>
+                <div class="error-message">Şifre en az 6 karakter olmalıdır.</div>
+            </div>
+
+            <div class="form-group" id="confirmPasswordGroup">
+                <label for="confirmPassword">Şifre Tekrar</label>
+                <div class="input-wrapper">
+                    <input type="password" id="confirmPassword" class="form-control" placeholder="••••••••">
+                    <button type="button" class="toggle-password" data-target="confirmPassword">Göster</button>
+                </div>
+                <div class="error-message">Şifreler eşleşmiyor.</div>
+            </div>
+
+            <button type="submit" class="btn-primary">Üye Ol</button>
+        </form>
+
+        <div class="auth-footer">
+            Zaten hesabınız var mı? <a href="index.html">Giriş Yap</a>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const signupForm = document.getElementById('signupForm');
+            const fullNameInput = document.getElementById('fullName');
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            const confirmPasswordInput = document.getElementById('confirmPassword');
+            const successAlert = document.getElementById('successAlert');
+
+            // Şifre Göster/Gizle İşlevselliği
+            document.querySelectorAll('.toggle-password').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const targetId = e.target.getAttribute('data-target');
+                    const input = document.getElementById(targetId);
+                    if (input.type === 'password') {
+                        input.type = 'text';
+                        e.target.textContent = 'Gizle';
+                    } else {
+                        input.type = 'password';
+                        e.target.textContent = 'Göster';
+                    }
+                });
+            });
+
+            // Form Gönderim Kontrolü
+            signupForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                let isValid = true;
+
+                // Ad Soyad Doğrulama
+                const nameGroup = document.getElementById('nameGroup');
+                if (!fullNameInput.value.trim()) {
+                    nameGroup.classList.add('error');
+                    isValid = false;
+                } else {
+                    nameGroup.classList.remove('error');
+                }
+
+                // E-posta Doğrulama
+                const emailGroup = document.getElementById('emailGroup');
+                const emailValue = emailInput.value.trim();
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailValue || !emailRegex.test(emailValue)) {
+                    emailGroup.classList.add('error');
+                    isValid = false;
+                } else {
+                    emailGroup.classList.remove('error');
+                }
+
+                // Şifre Doğrulama
+                const passwordGroup = document.getElementById('passwordGroup');
+                const passwordValue = passwordInput.value.trim();
+                if (!passwordValue || passwordValue.length < 6) {
+                    passwordGroup.classList.add('error');
+                    isValid = false;
+                } else {
+                    passwordGroup.classList.remove('error');
+                }
+
+                // Şifre Tekrar Doğrulama
+                const confirmPasswordGroup = document.getElementById('confirmPasswordGroup');
+                const confirmPasswordValue = confirmPasswordInput.value.trim();
+                if (!confirmPasswordValue || confirmPasswordValue !== passwordValue) {
+                    confirmPasswordGroup.classList.add('error');
+                    isValid = false;
+                } else {
+                    confirmPasswordGroup.classList.remove('error');
+                }
+
+                if (isValid) {
+                    successAlert.textContent = 'Kayıt işlemi başarıyla tamamlandı! Giriş sayfasına yönlendiriliyorsunuz...';
+                    successAlert.className = 'alert-box success';
+                    signupForm.reset();
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 2500);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
